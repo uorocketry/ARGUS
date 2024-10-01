@@ -96,10 +96,6 @@ impl DataManager {
         match data.data {
             messages::Data::Command(command) => match command.data {
                 messages::command::CommandData::PowerDown(_) => {
-                    crate::app::sleep_system::spawn().ok();
-                }
-                messages::command::CommandData::RadioRateChange(command_data) => {
-                    self.logging_rate = Some(command_data.rate);
                 }
                 _ => {
                     // We don't care atm about these other commands.
