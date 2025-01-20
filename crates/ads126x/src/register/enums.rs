@@ -119,6 +119,7 @@ pub enum PGAGain {
 }
 
 #[repr(u8)]
+#[derive(PartialEq)]
 pub enum NegativeInpMux {
     AIN0 = 0b0000,
     AIN1 = 0b0001,
@@ -139,6 +140,7 @@ pub enum NegativeInpMux {
 }
 
 #[repr(u8)]
+#[derive(PartialEq)]
 pub enum PositiveInpMux {
     AIN0 = 0b0000,
     AIN1 = 0b0001,

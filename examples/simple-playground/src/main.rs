@@ -29,10 +29,7 @@ fn main() -> ! {
 
     info!("Reset reason: {:?}", reset);
 
-    let _ccdr = rcc
-        .use_hse(48.MHz()) // check the clock hardware
-        .sys_ck(200.MHz())
-        .freeze(pwrcfg, &dp.SYSCFG);
+    let _ccdr = rcc.freeze(pwrcfg, &dp.SYSCFG);
     info!("RCC configured");
 
     loop {

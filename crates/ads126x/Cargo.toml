@@ -12,14 +12,4 @@ heapless = {workspace = true}
 cortex-m = { workspace = true }
 
 [dev-dependencies]
-defmt-test = { workspace = true }
-panic-probe = { workspace = true }
-stm32h7xx-hal = { workspace = true }
-
-[[test]]
-name = "example"
-harness = false
-
-[lib]
-name = "ads126x"
-harness = false
+embedded-hal-mock = "0.11.1"

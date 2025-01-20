@@ -7,6 +7,7 @@
 pub const ENERGY_RANGES: [[f64; 2]; 3] = [[-5.891, 0.0], [0.0, 20.644], [20.644, 54.886]];
 
 ///Type K thermocouple coefficients for polynomial calculation
+/// See https://www.eevblog.com/forum/metrology/a-dive-into-k-type-thermocouple-maths/
 pub const TYPE_K_COEF: [[f64; 10]; 3] = [
     [
         0.0,

@@ -2,7 +2,7 @@
 #![no_main]
 
 // mod state_machine;
-mod adc_manager;
+pub mod adc_manager;
 mod can_manager;
 mod data_manager;
 mod time_manager;
@@ -52,9 +52,13 @@ fn panic() -> ! {
     cortex_m::asm::udf()
 }
 
-#[rtic::app(device = stm32h7xx_hal::stm32, peripherals = true, dispatchers = [EXTI0, EXTI1, EXTI2, SPI3, SPI2])]
+#[rtic::app(device = stm32h7xx_hal::stm32, peripherals = true, dispatchers = [EXTI0, EXTI2, SPI3, SPI2])]
 mod app {
     use messages::CanData;
+    use stm32h7xx_hal::{
+        gpio::{Edge, ExtiPin, Pin},
+        hal::adc,
+    };
 
     use super::*;
 
@@ -62,12 +66,12 @@ mod app {
     struct SharedResources {
         data_manager: DataManager,
         em: ErrorManager,
-        sd_manager: SdManager<
-            stm32h7xx_hal::spi::Spi<stm32h7xx_hal::pac::SPI1, stm32h7xx_hal::spi::Enabled>,
-            PA4<Output<PushPull>>,
-        >,
-        can_command_manager: CanManager<stm32h7xx_hal::can::Can<stm32h7xx_hal::pac::FDCAN1>>,
-        can_data_manager: CanManager<stm32h7xx_hal::can::Can<stm32h7xx_hal::pac::FDCAN2>>,
+        // sd_manager: SdManager<
+        //     stm32h7xx_hal::spi::Spi<stm32h7xx_hal::pac::SPI1, stm32h7xx_hal::spi::Enabled>,
+        //     PA4<Output<PushPull>>,
+        // >,
+        // can_command_manager: CanManager<stm32h7xx_hal::can::Can<stm32h7xx_hal::pac::FDCAN1>>,
+        // can_data_manager: CanManager<stm32h7xx_hal::can::Can<stm32h7xx_hal::pac::FDCAN2>>,
         rtc: rtc::Rtc,
         adc_manager: AdcManager,
     }
@@ -78,6 +82,7 @@ mod app {
         can_sender: Sender<'static, CanMessage, DATA_CHANNEL_CAPACITY>,
         led_red: PA2<Output<PushPull>>,
         led_green: PA3<Output<PushPull>>,
+        adc1_int: Pin<'A', 15, stm32h7xx_hal::gpio::Input>,
     }
 
     #[init]
@@ -107,8 +112,8 @@ mod app {
             .kernel_clk_mux(rec::FdcanClkSel::Pll1Q);
 
         let ccdr = rcc
-            .use_hse(48.MHz()) // check the clock hardware
-            .sys_ck(200.MHz())
+            // .use_hse(48.MHz()) // check the clock hardware
+            // .sys_ck(200.MHz())
             .pll1_strategy(rcc::PllConfigStrategy::Iterative)
             .pll1_q_ck(32.MHz())
             .freeze(pwrcfg, &ctx.device.SYSCFG);
@@ -129,27 +134,27 @@ mod app {
         // assert_eq!(ccdr.clocks.pll1_q_ck().unwrap().raw(), 32_000_000);
         info!("PLL1Q:");
         // https://github.com/stm32-rs/stm32h7xx-hal/issues/369 This needs to be stolen. Grrr I hate the imaturity of the stm32-hal
-        let can2: fdcan::FdCan<
-            stm32h7xx_hal::can::Can<stm32h7xx_hal::pac::FDCAN2>,
-            fdcan::ConfigMode,
-        > = {
-            let rx = gpiob.pb12.into_alternate().speed(Speed::VeryHigh);
-            let tx = gpiob.pb13.into_alternate().speed(Speed::VeryHigh);
-            ctx.device.FDCAN2.fdcan(tx, rx, fdcan_prec)
-        };
+        // let can2: fdcan::FdCan<
+        //     stm32h7xx_hal::can::Can<stm32h7xx_hal::pac::FDCAN2>,
+        //     fdcan::ConfigMode,
+        // > = {
+        //     let rx = gpiob.pb12.into_alternate().speed(Speed::VeryHigh);
+        //     let tx = gpiob.pb13.into_alternate().speed(Speed::VeryHigh);
+        //     ctx.device.FDCAN2.fdcan(tx, rx, fdcan_prec)
+        // };
 
-        let can_data_manager = CanManager::new(can2);
+        // let can_data_manager = CanManager::new(can2);
 
-        let can1: fdcan::FdCan<
-            stm32h7xx_hal::can::Can<stm32h7xx_hal::pac::FDCAN1>,
-            fdcan::ConfigMode,
-        > = {
-            let rx = gpioa.pa11.into_alternate().speed(Speed::VeryHigh);
-            let tx = gpioa.pa12.into_alternate().speed(Speed::VeryHigh);
-            ctx.device.FDCAN1.fdcan(tx, rx, fdcan_prec_unsafe)
-        };
+        // let can1: fdcan::FdCan<
+        //     stm32h7xx_hal::can::Can<stm32h7xx_hal::pac::FDCAN1>,
+        //     fdcan::ConfigMode,
+        // > = {
+        //     let rx = gpioa.pa11.into_alternate().speed(Speed::VeryHigh);
+        //     let tx = gpioa.pa12.into_alternate().speed(Speed::VeryHigh);
+        //     ctx.device.FDCAN1.fdcan(tx, rx, fdcan_prec_unsafe)
+        // };
 
-        let can_command_manager = CanManager::new(can1);
+        // let can_command_manager = CanManager::new(can1);
 
         let spi_sd: stm32h7xx_hal::spi::Spi<
             stm32h7xx_hal::stm32::SPI1,
@@ -161,15 +166,15 @@ mod app {
                 gpioa.pa6.into_alternate(),
                 gpioa.pa7.into_alternate(),
             ),
-            stm32h7xx_hal::spi::Config::new(spi::MODE_0),
-            16.MHz(),
+            stm32h7xx_hal::spi::Config::new(spi::MODE_1),
+            6.MHz(),
             ccdr.peripheral.SPI1,
             &ccdr.clocks,
         );
 
         let cs_sd = gpioa.pa4.into_push_pull_output();
 
-        let sd_manager = SdManager::new(spi_sd, cs_sd);
+        // let sd_manager = SdManager::new(spi_sd, cs_sd);
 
         // ADC setup
         let adc_spi: stm32h7xx_hal::spi::Spi<
@@ -182,8 +187,8 @@ mod app {
                 gpioe.pe5.into_alternate(),
                 gpioe.pe6.into_alternate(),
             ),
-            stm32h7xx_hal::spi::Config::new(spi::MODE_0),
-            1.MHz(),
+            stm32h7xx_hal::spi::Config::new(spi::MODE_1), // mode 1 per datasheet
+            8.MHz(),                                      // 125 ns
             ccdr.peripheral.SPI4,
             &ccdr.clocks,
         );
@@ -192,9 +197,10 @@ mod app {
         let adc2_cs = gpiod.pd2.into_push_pull_output();
 
         let adc1_rst = gpioc.pc11.into_push_pull_output();
-        let adc2_rst = gpioe.pe0.into_push_pull_output();
+        let adc2_rst = gpiod.pd1.into_push_pull_output();
 
-        let adc_manager = AdcManager::new(adc_spi, adc1_rst, adc2_rst, adc1_cs, adc2_cs);
+        let mut adc_manager = AdcManager::new(adc_spi, adc1_rst, adc2_rst, adc1_cs, adc2_cs);
+        adc_manager.init_adc1().ok();
 
         // leds
         let led_red = gpioa.pa2.into_push_pull_output();
@@ -212,8 +218,14 @@ mod app {
             .unwrap()
             .and_hms_opt(0, 0, 0)
             .unwrap();
-
         rtc.set_date_time(now);
+        let mut syscfg = ctx.device.SYSCFG;
+        let mut exti = ctx.device.EXTI;
+        // setup interupt drdy pins
+        let mut adc1_int = gpioa.pa15.into_pull_up_input();
+        adc1_int.make_interrupt_source(&mut syscfg);
+        adc1_int.trigger_on_edge(&mut exti, Edge::Rising);
+        adc1_int.enable_interrupt(&mut exti);
 
         /* Monotonic clock */
         Mono::start(core.SYST, 200_000_000);
@@ -224,23 +236,24 @@ mod app {
         let state_machine = StateMachine::new(traits::Context {});
 
         blink::spawn().ok();
-        run_sm::spawn().ok();
-        send_data_internal::spawn(can_receiver).ok();
+        // send_data_internal::spawn(can_receiver).ok();
         reset_reason_send::spawn().ok();
         state_send::spawn().ok();
+        read_adc1::spawn().ok();
         info!("Online");
 
         (
             SharedResources {
                 data_manager,
                 em,
-                sd_manager,
-                can_command_manager,
-                can_data_manager,
+                // sd_manager,
+                // can_command_manager,
+                // can_data_manager,
                 rtc,
                 adc_manager,
             },
             LocalResources {
+                adc1_int,
                 can_sender,
                 led_red,
                 led_green,
@@ -249,10 +262,45 @@ mod app {
         )
     }
 
-    #[task(priority = 3, local = [state_machine], shared = [data_manager, &em, rtc])]
-    async fn run_sm(cx: run_sm::Context) {
+    #[task(priority = 3, binds = EXTI15_10, shared = [adc_manager], local = [adc1_int])]
+    fn adc1_data_ready(mut cx: adc1_data_ready::Context) {
+        info!("new data available come through");
+        cx.shared.adc_manager.lock(|adc_manager| {
+            let data = adc_manager.read_adc1_data(
+                ads126x::register::NegativeInpMux::AIN1,
+                ads126x::register::PositiveInpMux::AIN0,
+            );
+            match data {
+                Ok(data) => {
+                    info!("data: {:?}", data);
+                }
+                Err(_) => {
+                    info!("Error reading data");
+                }
+            }
+        });
+        cx.local.adc1_int.clear_interrupt_pending_bit();
+    }
+
+    #[task(priority = 3, shared = [adc_manager, &em, rtc])]
+    async fn read_adc1(mut cx: read_adc1::Context) {
         loop {
-            // cx.local.state_machine.run(cx);
+            info!("Reading ADC1");
+            cx.shared.adc_manager.lock(|adc_manager| {
+                let data = adc_manager.read_adc1_data(
+                    ads126x::register::NegativeInpMux::AIN1,
+                    ads126x::register::PositiveInpMux::AIN0,
+                );
+                match data {
+                    Ok(data) => {
+                        info!("data: {:?}", data);
+                    }
+                    Err(_) => {
+                        info!("Error reading data");
+                    }
+                }
+            });
+            Mono::delay(10.millis()).await
         }
     }
 
@@ -377,56 +425,56 @@ mod app {
         });
     }
 
-    #[task(priority = 2, binds = FDCAN1_IT0, shared = [can_command_manager, data_manager, &em])]
-    fn can_command(mut cx: can_command::Context) {
-        // info!("CAN Command");
-        cx.shared.can_command_manager.lock(|can| {
-            cx.shared
-                .data_manager
-                .lock(|data_manager| cx.shared.em.run(|| can.process_data(data_manager)));
-        })
-    }
+    // #[task(priority = 2, binds = FDCAN1_IT0, shared = [can_command_manager, data_manager, &em])]
+    // fn can_command(mut cx: can_command::Context) {
+    //     // info!("CAN Command");
+    //     cx.shared.can_command_manager.lock(|can| {
+    //         cx.shared
+    //             .data_manager
+    //             .lock(|data_manager| cx.shared.em.run(|| can.process_data(data_manager)));
+    //     })
+    // }
 
-    #[task( priority = 3, binds = FDCAN2_IT0, shared = [&em, can_data_manager, data_manager])]
-    fn can_data(mut cx: can_data::Context) {
-        cx.shared.can_data_manager.lock(|can| {
-            {
-                cx.shared.data_manager.lock(|data_manager| {
-                    cx.shared.em.run(|| {
-                        can.process_data(data_manager)?;
-                        Ok(())
-                    })
-                })
-            }
-        });
-    }
+    // #[task( priority = 3, binds = FDCAN2_IT0, shared = [&em, can_data_manager, data_manager])]
+    // fn can_data(mut cx: can_data::Context) {
+    //     cx.shared.can_data_manager.lock(|can| {
+    //         {
+    //             cx.shared.data_manager.lock(|data_manager| {
+    //                 cx.shared.em.run(|| {
+    //                     can.process_data(data_manager)?;
+    //                     Ok(())
+    //                 })
+    //             })
+    //         }
+    //     });
+    // }
 
-    #[task(priority = 2, shared = [&em, can_data_manager, data_manager])]
-    async fn send_data_internal(
-        mut cx: send_data_internal::Context,
-        mut receiver: Receiver<'static, CanMessage, DATA_CHANNEL_CAPACITY>,
-    ) {
-        loop {
-            if let Ok(m) = receiver.recv().await {
-                cx.shared.can_data_manager.lock(|can| {
-                    cx.shared.em.run(|| {
-                        can.send_message(m)?;
-                        Ok(())
-                    })
-                });
-            }
-        }
-    }
+    // #[task(priority = 2, shared = [&em, can_data_manager, data_manager])]
+    // async fn send_data_internal(
+    //     mut cx: send_data_internal::Context,
+    //     mut receiver: Receiver<'static, CanMessage, DATA_CHANNEL_CAPACITY>,
+    // ) {
+    //     loop {
+    //         if let Ok(m) = receiver.recv().await {
+    //             cx.shared.can_data_manager.lock(|can| {
+    //                 cx.shared.em.run(|| {
+    //                     can.send_message(m)?;
+    //                     Ok(())
+    //                 })
+    //             });
+    //         }
+    //     }
+    // }
 
-    #[task(priority = 2, shared = [&em, can_command_manager, data_manager])]
-    async fn send_command_internal(mut cx: send_command_internal::Context, m: CanMessage) {
-        cx.shared.can_command_manager.lock(|can| {
-            cx.shared.em.run(|| {
-                can.send_message(m)?;
-                Ok(())
-            })
-        });
-    }
+    // #[task(priority = 2, shared = [&em, can_command_manager, data_manager])]
+    // async fn send_command_internal(mut cx: send_command_internal::Context, m: CanMessage) {
+    //     cx.shared.can_command_manager.lock(|can| {
+    //         cx.shared.em.run(|| {
+    //             can.send_message(m)?;
+    //             Ok(())
+    //         })
+    //     });
+    // }
 
     #[task(priority = 1, local = [led_red, led_green], shared = [&em])]
     async fn blink(cx: blink::Context) {

@@ -11,7 +11,7 @@ use fdcan::{
     frame::{FrameFormat, TxFrameHeader},
     id::StandardId,
 };
-use messages::Message;
+use messages::CanMessage;
 use postcard::from_bytes;
 
 /// Clock configuration is out of scope for this builder
@@ -72,7 +72,7 @@ impl<I: Instance> CanManager<I> {
             can: can.into_normal(),
         }
     }
-    pub fn send_message(&mut self, m: Message) -> Result<(), HydraError> {
+    pub fn send_message(&mut self, m: CanMessage) -> Result<(), HydraError> {
         let mut buf = [0u8; 64];
         let payload = postcard::to_slice(&m, &mut buf)?;
         let header = TxFrameHeader {
@@ -88,11 +88,10 @@ impl<I: Instance> CanManager<I> {
     pub fn process_data(&mut self, data_manager: &mut DataManager) -> Result<(), HydraError> {
         let mut buf = [0u8; 64];
         while self.can.receive0(&mut buf).is_ok() {
-            if let Ok(data) = from_bytes::<Message>(&buf) {
-                info!("Received message {}", data.clone());
+            if let Ok(data) = from_bytes::<CanMessage>(&buf) {
                 data_manager.handle_command(data)?;
             } else {
-                info!("Error: {:?}", from_bytes::<Message>(&buf).unwrap_err());
+                info!("Error: {:?}", from_bytes::<CanMessage>(&buf).unwrap_err());
             }
         }
         Ok(())

@@ -40,7 +40,7 @@ impl AdcManager {
     pub fn init_adc1(&mut self) -> Result<(), ads126x::error::ADS126xError> {
         self.adc2_cs.set_high();
         self.adc1_cs.set_low();
-        self.adc1.reset()?;
+        self.adc1.set_reset_high()?;
 
         match spawn!(delay, 1000) {
             Ok(_) => (),
@@ -64,7 +64,7 @@ impl AdcManager {
     pub fn init_adc2(&mut self) -> Result<(), ads126x::error::ADS126xError> {
         self.adc1_cs.set_high();
         self.adc2_cs.set_low();
-        self.adc2.reset()?;
+        self.adc2.set_reset_high()?;
 
         match spawn!(delay, 1000) {
             Ok(_) => (),

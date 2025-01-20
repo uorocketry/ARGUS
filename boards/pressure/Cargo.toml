@@ -1,5 +1,5 @@
 [package]
-name = "temperature"
+name = "pressure"
 version = "0.1.0"
 edition = "2021"
 
@@ -40,5 +40,5 @@ harness = false
 path = "tests/adc.rs"
 
 [[bin]]
-name = "temperature"
+name = "pressure"
 harness = false
