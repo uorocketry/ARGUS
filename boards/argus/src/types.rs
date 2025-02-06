@@ -1,4 +1,8 @@
-use messages::node::{Node, Node::PressureBoard, Node::StrainBoard, Node::TemperatureBoard};
+use ads126x::register::{NegativeInpMux, PositiveInpMux};
+use messages::{
+    node::Node::{self, PressureBoard, StrainBoard, TemperatureBoard},
+    sensor::AdcSensor,
+};
 
 pub enum Feature {
     Temperature,

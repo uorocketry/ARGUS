@@ -23,9 +23,10 @@ panic-probe = { workspace = true }
 chrono = { workspace = true }
 enum_dispatch = {workspace = true}
 messages = {workspace = true}
-ads126x = {path = "../../crates/ads126x"}
+ads126x = { workspace = true }
 smlang = {workspace = true}
 embedded-hal = {workspace = true}
+thermocouple-converter = { path = "../../crates/thermocouple-converter" }
 
 [dev-dependencies]
 defmt-test = { workspace = true }

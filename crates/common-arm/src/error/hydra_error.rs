@@ -1,4 +1,5 @@
 // use atsamd_hal::dmac;
+use ads126x::error::ADS126xError;
 use core::convert::Infallible;
 use defmt::{write, Format};
 use derive_more::From;
@@ -23,6 +24,7 @@ pub enum HydraErrorType {
     MavlinkError(messages::mavlink::error::MessageWriteError),
     MavlinkReadError(messages::mavlink::error::MessageReadError),
     NbError(NbError<Infallible>),
+    ADS126xError(ADS126xError),
 }
 
 impl defmt::Format for HydraErrorType {
@@ -48,6 +50,9 @@ impl defmt::Format for HydraErrorType {
             }
             HydraErrorType::NbError(_) => {
                 write!(f, "Nb error!");
+            }
+            HydraErrorType::ADS126xError(_) => {
+                write!(f, "ADS126x error!");
             }
         }
     }

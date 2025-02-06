@@ -17,6 +17,7 @@ use postcard::from_bytes;
 /// Clock configuration is out of scope for this builder
 /// easiest way to avoid alloc is to use no generics
 pub struct CanManager<I: Instance> {
+    // can: fdcan::FdCan<I, fdcan::InternalLoopbackMode>,
     can: fdcan::FdCan<I, fdcan::NormalOperationMode>,
 }
 
@@ -69,6 +70,7 @@ impl<I: Instance> CanManager<I> {
         can.apply_config(config);
 
         Self {
+            // can: can.into_internal_loopback(),
             can: can.into_normal(),
         }
     }
@@ -78,7 +80,7 @@ impl<I: Instance> CanManager<I> {
         let header = TxFrameHeader {
             len: payload.len() as u8, // switch to const as this never changes or swtich on message type of known size
             id: StandardId::new(COM_ID.into()).unwrap().into(),
-            frame_format: FrameFormat::Standard,
+            frame_format: FrameFormat::Fdcan,
             bit_rate_switching: false,
             marker: None,
         };
@@ -89,7 +91,8 @@ impl<I: Instance> CanManager<I> {
         let mut buf = [0u8; 64];
         while self.can.receive0(&mut buf).is_ok() {
             if let Ok(data) = from_bytes::<CanMessage>(&buf) {
-                data_manager.handle_command(data)?;
+                data_manager.handle_command(data.clone())?;
+                info!("Received: {:?}", data);
             } else {
                 info!("Error: {:?}", from_bytes::<CanMessage>(&buf).unwrap_err());
             }

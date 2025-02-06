@@ -11,9 +11,11 @@
             "chip": "STM32H733VGTx",
             "coreConfigs": [
                 {
-                    "programBinary": "${workspaceFolder}/target/thumbv7em-none-eabihf/debug/strain",
-                }
-            ]
+                    "programBinary": "${workspaceFolder}/target/thumbv7em-none-eabihf/debug/argus",
+                },
+            ],
+            "connectUnderReset": true, 
+            "consoleLogLevel": "Info"
         },
         {
             "type": "probe-rs-debug",
@@ -22,9 +24,11 @@
             "chip": "STM32H733VGTx",
             "coreConfigs": [
                 {
-                    "programBinary": "${workspaceFolder}/target/thumbv7em-none-eabihf/debug/temperature",
+                    "programBinary": "${workspaceFolder}/target/thumbv7em-none-eabihf/debug/argus",
                 }
-            ]
+            ],
+            "connectUnderReset": true, 
+            "consoleLogLevel": "Info"
         },
         {
             "type": "probe-rs-debug",
@@ -33,9 +37,11 @@
             "chip": "STM32H733VGTx",
             "coreConfigs": [
                 {
-                    "programBinary": "${workspaceFolder}/target/thumbv7em-none-eabihf/debug/pressure",
+                    "programBinary": "${workspaceFolder}/target/thumbv7em-none-eabihf/debug/argus",
                 }
-            ]
+            ],
+            "connectUnderReset": true, 
+            "consoleLogLevel": "Info"
         },
     ]
 }

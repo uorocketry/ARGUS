@@ -69,7 +69,7 @@ version = "0.5.0"
 
 [workspace.dependencies.messages]
 git = "https://github.com/uorocketry/messages"
-branch = "state-refactor"
+branch = "adc-update"
 
 [workspace.dependencies.defmt-test]
 version = "0.3.2"
@@ -79,3 +79,6 @@ version = "0.3.11"
 
 [workspace.dependencies.smlang]
 version = "0.8.0"
+
+[workspace.dependencies.ads126x]
+git = "https://github.com/uorocketry/ads126x"

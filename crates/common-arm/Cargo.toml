@@ -17,6 +17,7 @@ embedded-hal = {workspace = true}
 nb = {workspace = true}
 stm32h7xx-hal = { workspace = true }
 panic-probe = { workspace = true }
+ads126x = { workspace = true }
 
 [dev-dependencies]
 defmt-test = { workspace = true }

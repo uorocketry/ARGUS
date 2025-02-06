@@ -62,29 +62,43 @@ fn pow(base: f64, exp: i32) -> f64 {
     return result;
 }
 
-///function to calculate the conversion between voltage to celsius from the thermocoupler.
-///in: voltage: f64
-///out: celsius: f64
+pub fn adc_to_voltage(adc_reading: i32) -> f64 {
+    // let reference_voltage = 2.5;
+    // let max_adc_value: u32 = 4_294_967_295;
+    // (adc_reading as f64 / max_adc_value as f64) * reference_voltage
+    let reference_voltage = 2.5;
+    let max_adc_value: u32 = 4_294_967_295;
+    (adc_reading as f64 * reference_voltage) / max_adc_value as f64
+}
+
+/// Function to calculate the conversion between voltage to celsius from the thermocoupler.
+/// in: voltage: f64
+/// out: celsius: f64
 pub fn voltage_to_celsius(voltage: f64) -> f64 {
-    //define variables
+    // Define variables
     let mut result = 0.0;
     let mut i = 0;
 
-    //goes through the different ranges
+    // Goes through the different ranges
     while i < ENERGY_RANGES.len() {
         if voltage >= ENERGY_RANGES[i][0] && voltage <= ENERGY_RANGES[i][1] {
-            //calculates the result
+            // Calculates the result
             for k in 0..TYPE_K_COEF[i].len() {
                 result += TYPE_K_COEF[i][k] * pow(voltage, k as i32);
             }
             return result;
         } else {
-            //if the voltage is not in the range, it goes to the next range
+            // If the voltage is not in the range, it goes to the next range
             i += 1;
         }
     }
 
     return -1.0;
+}
+
+pub fn adc_to_celsius(adc_reading: i32) -> f64 {
+    let voltage = adc_to_voltage(adc_reading);
+    voltage_to_celsius(voltage)
 }
 
 #[cfg(test)]
