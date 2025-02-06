@@ -1,8 +1,6 @@
 //! This module should be refactored out.
-use crate::States;
+use crate::state_machine::{StateMachineContext, States};
 use messages::state::DeviceState;
-
-use crate::StateMachineContext;
 
 pub struct Context {}
 

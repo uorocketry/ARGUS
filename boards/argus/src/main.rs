@@ -6,13 +6,7 @@ compile_error!(
     "You must enable exactly one of the features: 'pressure', 'temperature', or 'strain'."
 );
 
-// mod state_machine;
-pub mod adc_manager;
-mod can_manager;
-mod data_manager;
-mod time_manager;
-mod traits;
-mod types;
+use argus::*;
 
 use adc_manager::AdcManager;
 use chrono::NaiveDate;
@@ -24,7 +18,7 @@ use messages::CanMessage;
 use panic_probe as _;
 use rtic_monotonics::systick::prelude::*;
 use rtic_sync::{channel::*, make_channel};
-use smlang::statemachine;
+use state_machine as sm;
 use stm32h7xx_hal::gpio::gpioa::{PA2, PA3};
 use stm32h7xx_hal::gpio::PA4;
 use stm32h7xx_hal::gpio::{Edge, ExtiPin, Pin};
@@ -40,18 +34,6 @@ use crate::types::{ADC2_RST_PIN_ID, ADC2_RST_PIN_PORT};
 const DATA_CHANNEL_CAPACITY: usize = 10;
 
 systick_monotonic!(Mono, 500);
-
-statemachine! {
-    transitions: {
-        *Init + Start = Idle,
-        Idle | Recovery + WantsCollection = Collection,
-        Idle + NoConfig = Calibration,
-        Collection + WantsProcessing = Processing,
-        Calibration + Configured = Idle,
-        Fault + FaultCleared = Idle,
-        _ + FaultDetected = Fault,
-    }
-}
 
 #[inline(never)]
 #[defmt::panic_handler]
@@ -80,11 +62,11 @@ mod app {
         rtc: rtc::Rtc,
         adc_manager: AdcManager<Pin<ADC2_RST_PIN_PORT, ADC2_RST_PIN_ID, Output<PushPull>>>,
         time_manager: TimeManager,
+        state_machine: sm::StateMachine<traits::Context>,
     }
 
     #[local]
     struct LocalResources {
-        state_machine: StateMachine<traits::Context>,
         can_sender: Sender<'static, CanMessage, DATA_CHANNEL_CAPACITY>,
         led_red: PA2<Output<PushPull>>,
         led_green: PA3<Output<PushPull>>,
@@ -259,12 +241,13 @@ mod app {
         let mut data_manager = DataManager::new();
         data_manager.set_reset_reason(reset);
         let em = ErrorManager::new();
-        let state_machine = StateMachine::new(traits::Context {});
+        let state_machine = sm::StateMachine::new(traits::Context {});
 
         blink::spawn().ok();
         // send_data_internal::spawn(can_receiver).ok();
         reset_reason_send::spawn().ok();
         state_send::spawn().ok();
+        sm_orchestrate::spawn().ok();
         info!("Online");
 
         (
@@ -277,6 +260,7 @@ mod app {
                 rtc,
                 adc_manager,
                 time_manager,
+                state_machine,
             },
             LocalResources {
                 adc1_int,
@@ -284,9 +268,33 @@ mod app {
                 can_sender,
                 led_red,
                 led_green,
-                state_machine,
             },
         )
+    }
+
+    /// The state machine orchestrator.
+    /// Handles the current state of the ARGUS system.
+    #[task(priority = 2, shared = [&state_machine])]
+    async fn sm_orchestrate(cx: sm_orchestrate::Context) {
+        let mut last_state = cx.shared.state_machine.state();
+        loop {
+            let state = cx.shared.state_machine.state();
+            if state != last_state {
+                match state {
+                    sm::States::Calibration => todo!(),
+                    sm::States::Collection => todo!(),
+                    sm::States::Fault => todo!(),
+                    sm::States::Idle => todo!(),
+                    sm::States::Init => todo!(),
+                    sm::States::Processing => todo!(),
+                    sm::States::Recovery => todo!(),
+                }
+                
+                last_state = state;
+            }
+
+            Mono::delay(100.millis()).await;
+        }
     }
 
     #[task(priority = 3, binds = EXTI15_10, shared = [adc_manager], local = [adc1_int])]
